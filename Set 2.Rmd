@@ -1,0 +1,325 @@
+---
+title: 'Problem set # 2'
+author: "Andres Mejia"
+date: "10/26/2021"
+output:
+  pdf_document: default
+  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(png)
+p1=readPNG("Flow network.png")
+```
+
+## 1. Humanitarian supply flow.
+
+Consider the network in Figure 1. Node 11 represents a city in a state of emergency, which urgently needs humanitarian supplies. Nodes 1 and 2 are origins of the required supplies. The numbers shown on arcs are their daily transportation capacities, e.g., at most 83 units of supplies can be sent in a day from node 1 to node 3. Consider the problem of sending as many humanitarian supplies a s possible in a day from nodes 1 and 2 to node 11.
+
+
+```{r, echo=FALSE,fig.align='center'}
+knitr::include_graphics("Flow network.png")
+```
+
+
+
+
+
+### a. Formulate the problem as an integer optimization model and formulate its linear relaxation.
+
+This problem is a network flow problem. Let $x_{i,j}$ be the flow between nodes $i$ and $j$, Let $b_{i,j}$ the max flow between two nodes. Then the problem becomes:
+
+$$
+\max \sum_{i} x_{j,11}=x_{8,11}+x_{9,11}+x_{10,11}  
+$$
+
+Edge flow constraints:
+$$
+x_{i,j}\leq b_{i,j}
+$$
+$$
+\begin{matrix}
+x_{1,3}\leq 83&& x_{1,4}\leq 42\\
+x_{1,5}\leq 65&& x_{2,4}\leq 84\\
+x_{2,5}\leq 77&& x_{3,6}\leq 69\\
+x_{3,7}\leq 45&& x_{4,6}\leq 39\\
+x_{4,7}\leq 83&& x_{5,6}\leq 91\\
+x_{5,7}\leq 68&& x_{6,8}\leq 49\\
+x_{6,9}\leq 52&&x_{7,8}\leq 72\\
+x_{7,9}\leq 37&&x_{7,10}\leq 81\\
+x_{8,11}\leq 82&&x_{9,11}\leq 103\\
+x_{10,11}\leq 97
+\end{matrix}
+$$
+
+
+
+
+Continuity constraints:
+$$
+\begin{matrix}
+\sum_{j} x_{j,i}-\sum_j x_{i,j}=0\\
+i \in \{3,\ldots,10\}
+\end{matrix}
+$$
+$$
+\begin{matrix}
+x_{3,6}+x_{3,7}-x_{1,3}-x_{1,3}=0\\
+x_{4,6}+x_{4,7}-x_{1,4}-x_{2,4}=0\\
+x_{5,6}+x_{5,7}-x_{1,5}-x_{2,5}=0\\
+x_{6,8}+x_{6,9}-x_{3,6}-x_{4,6}-x_{5,6}=0\\
+x_{7,8}+x{7,9}+x_{7,10}-x_{3,7}-x_{4,7}-x_{5,7}=0\\
+x_{8,11}-x_{6,8}-x_{7,8}=0\\
+x_{9,11}-x_{6,9}-x_{7,9}=0\\
+x_{10,11}-x_{7,10}=0
+\end{matrix}
+$$
+
+Integer constraints:
+$$
+x_{i,j} \in \mathbb{Z^+}\cup \{0\}
+$$
+
+### b. Implement in Gurobi–Python the model and solve the linear relaxation. Do you obtain an integer solution? Why?
+
+Let's first read a csv that includes the problem information i.e the edges capacity.
+```{python}
+import pandas as pd
+
+node_info=pd.read_csv("Documents/Input data p1.csv")
+node_info
+```
+
+Now let's build the problem first we build the relaxed problem. The only diference is that we don't restrict the variables to be integers.
+
+
+```{python, results=FALSE}
+import gurobipy as gp
+
+Flow_model=gp.Model("Flow_model")
+
+arcs=[(node_info.iloc[k,0],node_info.iloc[k,1]) for k in range(19)  ]
+limites={(node_info.iloc[k,0],node_info.iloc[k,1]): 
+  node_info.iloc[k,2] for k in range(19)}
+arcs_var=Flow_model.addVars(arcs,vtype=gp.GRB.CONTINUOUS,name="Flow")
+
+Flow_model.setObjective(gp.quicksum(arcs_var[i]for i in arcs if
+i[1]==11),gp.GRB.MAXIMIZE)
+
+capacidad_constr=Flow_model.addConstrs((arcs_var[k]<=limites[k] for k in
+arcs),name="Capacidad")
+
+Flow_model.addConstrs((gp.quicksum(arcs_var[k] for k in arcs if 
+k[1]==j )-gp.quicksum(arcs_var[k] for k in arcs if k[0]==j )==0 for j in
+range(3,11)),"Flujo")
+
+```
+
+
+```{python}
+
+Flow_model.update()
+Flow_model.optimize()
+
+
+
+
+```
+
+The optimal solution is 252. this is integer valued due to the Ford Fulkerson Algorithm that guarantees the existance of a solution built using sums and subtractions of edges capacities. This guarantees that there is at least one solution that is integer valued and that the flow through the edges is also integer valued.
+
+
+### c. Generate through Gurobi–Python sensitivity information and interpret it.
+
+```{python}
+
+
+for v in Flow_model.getVars():
+    if v.X != 0:
+        print("%s %s %8.2f %s %8.2f %s %8.2f %s %8.2f" % 
+              (v.Varname, "=", v.X, ", reduced cost = ", v.RC, 
+              ", from coeff = ", v.SAObjLow, "to coeff = ", v.SAObjUp))
+        
+      
+```
+
+
+The reduced cost is zero in all cases, this is not surprising as there is a positive flow in all edges.
+
+
+
+
+```{python}
+
+for c in Flow_model.getConstrs():
+        print("%s %s %8.2f %s %8.2f %s %8.2f" % (c.ConstrName,
+        ": shadow price = ", c.Pi, ", from RHS = ", c.SARHSLow, "to RHS = ",
+        c.SARHSUp))
+
+
+
+
+```
+
+On the other hand the shadow prices indicate where we can find a bottleneck in the network. In places where it is valued one, increasing the restriction value will increase the optimum. 
+
+
+### d. If you had a limited budget to increase the capacity of some arcs, which ones would you prioritize? Why?
+
+The sensitivity information (shadow prices) is on the output above. The shadow prices imply that increasing the capacity at edges $(6,9),(7,9),(7,10)$ and $(8,11)$ will increase the output. In all cases increasing one unit of max flow in that edge will increase one unit of max output. 
+
+We also see how much we can increase this in each edge by checking the deltas of the sensitivity analysis. Considering this the edge $(8,11)$ can increase up to 15 units and is the one that can grow the most.  
+
+
+## 2. A person wants to visit by car the following Spanish cities, starting and ending in Madrid: Alicante, Barcelona, Cordoba, La Coruna, Valencia and Granada. 
+
+### a. Formulate the problem of finding the shortest tour. How many constraints has in this case the integer optimization formulation seen in class? 
+
+Let $C$ be set of cities we will be visiting and $d_{ij}$  the distance between city i and city j, and $x_{ij}$ be a binary desition variable valued 1 if we travel between city i and j, 0 otherwise. Then the problem becomes:
+
+$$
+\min \sum_{i \in C, j\in C. i\neq j}d_{ij}x_{ij}
+$$
+subject to:
+
+Entering constraint (each city must have an incoming edge one constraint by city a total of 7 constraints). 
+
+$$
+\sum_{j\in C,j\neq i} x_{ij}=1\: i \in C
+$$
+Exiting constraint (each city must have an incoming edge one constraint by city a total of 7 constraints).
+
+$$
+\sum_{i\in C,j\neq i} x_{ij}=1\: j \in C
+$$
+
+We also have the following constraint to assure no subtours. For all $W \in \mathcal{P}(C)$
+
+$$
+\sum_{i \in W, j \in W^c} x_{ij}\geq1 
+$$
+
+This gives us $2^7=128$ constraints, however we will only add only those contraint to break sub-tours, when adding this contraint for a set we will also include the contraint for the complementary set.
+
+This is turn brings the total contraints to 187 (including the fact that each variable (42) must be binary)
+
+### b. Apply the iterative procedure seen in class to try to find an optimal tour, carrying out at most three iterations using Gurobi–Python. Discuss the results.
+
+Implementing this in python, let's first read a csv that includes the problem information i.e distances.
+
+
+```{python, tidy=TRUE}
+import pandas as pd
+
+distances=pd.read_csv("Distances.csv", index_col=0)
+distances
+```
+
+
+The following code creates the model. 
+
+```{python, results=FALSE}
+import gurobipy as gp
+
+TSP_model=gp.Model("TSP")
+
+cities={j for j in distances.columns}
+
+arcs=[(j,k) for j in cities for k in cities  if j!=k]
+distance_dict={(j,k): distances.loc[j,k] for j in cities for k in cities}
+arcs_var=TSP_model.addVars(arcs,vtype=gp.GRB.BINARY)
+
+TSP_model.setObjective(gp.quicksum(arcs_var[i]*distance_dict[i] for i in arcs ),gp.GRB.MINIMIZE)
+
+TSP_model.addConstrs((gp.quicksum(arcs_var[(i,j)] for i in cities if i!=j)==1 for j in cities ),name="Entrada")
+
+TSP_model.addConstrs((gp.quicksum(arcs_var[(i,j)] for j in cities if j!=i)==1 for i in cities),name="Salida")
+
+```
+
+```{python}
+
+
+TSP_model.update()
+TSP_model.optimize()
+
+```
+
+
+These functions are defined to manipulate sub-tours and add restrictions to break them.
+
+```{python}
+
+
+def find_next_city(actual_city):
+  for j in cities:
+    if j==actual_city:
+      continue
+    if arcs_var[(actual_city,j)].X-1>-0.1:
+      return(j)
+  
+
+def find_tour(city1):
+  cities2=set({})
+  j=city1
+  for i in range(100):
+    cities2.add(j)
+    j=find_next_city(j)
+    if set({j}).issubset(cities2):
+      break
+  return(cities2)
+
+
+def add_tour_restriction(tour):
+  anti_tour=cities.difference(tour)
+  TSP_model.addConstr((gp.quicksum(arcs_var[(i,j)] for i in tour for j in anti_tour)>=1),name="tour_out")
+  TSP_model.addConstr((gp.quicksum(arcs_var[(i,j)] for j in tour for i in anti_tour)>=1),name="tour_in")
+  return
+
+
+def find_tour_2(city1):
+  cities2=set({})
+  cities3=list({})
+  j=city1
+  for i in range(100):
+    cities2.add(j)
+    cities3.append(j)
+    j=find_next_city(j)
+    if set({j}).issubset(cities2):
+      break
+  return(cities3)
+
+
+```
+
+Using these functions we can find and break the subtours in current solution:
+
+```{python}
+
+find_tour_2("Madrid")
+find_tour_2("Barcelona")
+find_tour_2("Granada")
+
+add_tour_restriction(find_tour("Madrid"))
+add_tour_restriction(find_tour("Barcelona"))
+add_tour_restriction(find_tour("Granada"))
+
+```
+
+With these extra restrictions we can solve the problem also we can check that the final problem has only one tour.
+
+```{python}
+
+TSP_model.update()
+TSP_model.optimize()
+
+find_tour_2("Madrid")
+
+```
+
+This is the optimal tour that is 3154 km long, note that the reverse is also an optimal tour. The tour is shown in the following plot.
+
+```{r echo=FALSE,fig.align='center',dpi=300,fig.height=15}
+knitr::include_graphics("TE.png",auto_pdf = TRUE)
+```

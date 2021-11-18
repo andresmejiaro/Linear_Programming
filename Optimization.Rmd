@@ -1,0 +1,461 @@
+---
+title: "Problem Set 1"
+author: "Andrés Felipe Mejía Rodríguez"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem 1
+
+### Dual and graphical solution
+The original problem:
+
+$$\max \,2x_1+3x_2-4x_3 $$
+subject to:
+$$3x_1+5x_2+2x_3=15$$
+$$x_1+3x_2-4x_3=8$$
+$$x_1,x2,x3\geq0$$
+
+
+
+for this kind of problem: Maximize $\vec{c} ^t\vec{x}$ subject to $A\vec{x}= \vec{b}, \vec{x} \geq0$ the dual is given by: minimize $\vec{b}^t\vec{y}$ subject to $A^t y\geq \vec{c}$. So this gives us
+
+$$\min \,15 y_1+8y_2$$
+subject to:
+$$
+3y_1+y_2\geq2$$
+$$5y_1+3y_2\geq3 $$
+$$2 y_1-4y_2\geq-4 $$
+
+Plotting this poligon we have:
+
+```{r cars, echo=FALSE,message=FALSE}
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+
+
+
+puntos=data.frame(Y1=c(3/4,2/7),Y2=c(-1/4,8/7))
+
+x=1:100/100*(3/4-2/7)+2/7
+y1= x %>% (function(x){2-3*x})
+y2= x %>% (function(x){1+x/2})
+
+xa=0:100/100*(2-3/4)+3/4
+y1a= xa %>% (function(x){1+x/2})
+y2a= xa %>% (function(x){1-5*x/3})
+
+
+ggplot()+
+  #geom_polygon(fill="gray")+
+  
+  geom_ribbon(aes(ymin=y1,ymax=y2,x=x),fill="grey")+
+  geom_ribbon(aes(ymin=y1a,ymax=y2a,x=xa),fill="grey")+
+  geom_function(fun=function(x){2-3*x}, color="yellow",xlim=c(2/7,3/4))+
+  geom_function(fun=function(x){1-5*x/3},color="blue",xlim=c(3/4,2))+
+  geom_function(fun=function(x){1+x/2},color="green",xlim=c(2/7,2))+
+   geom_function(fun=function(x){9.25/8-15*x/8},color="red",xlim=c(2/7,2))+
+  
+  geom_point(data=puntos,aes(x=Y1,y=Y2)  )
+# 
+  # geom_function(fun=function(x){9/8-15*x/8},color="black")
+
+  #geom_function(fun=function(x){8/8-15*x/8},color="black")+
+  
+  #geom_function(fun=function(x){10/8-15*x/8},color="black")
+
+
+```
+
+So it seems that the optimal solution is on the vertex $(3/4,-1/4)$ that gives us
+$9.25$ as the optimal value, its level curve is plotted in red.
+
+
+### Returning to the primal 
+
+By complementary slackness we have $(A^t\vec {y}-\vec{c})^t\vec{x}=0$ so in this case
+
+$$
+\left( \begin{pmatrix}3&1\\
+5&3\\
+2&-4\end{pmatrix}\begin{pmatrix}3/4\\-1/4\end{pmatrix}-\begin{pmatrix} 2 \\3\\-4\end{pmatrix}    \right)^t\begin{pmatrix}x_1\\ x_2\\x_3\end{pmatrix}=
+\begin{pmatrix}0\\0\\6.5\end{pmatrix}^t\begin{pmatrix}x_1\\ x_2\\x_3\end{pmatrix}
+$$
+
+so $6.5 x_3=0$ that means $x_3=0$ and we have
+
+$$3x_1+5x_2=15$$
+$$x_1+3x_2=8 $$
+
+Which has solutions $x=5/4$, $y=9/4$
+
+## Reduced costs
+
+The reduced costs are calculated by $\vec{c}-A\vec{y}$ where y is the dual solution,the negative of this quantity is calculated as an intermediate step to calculate the primal solution from the dual solution. This is:
+
+$$
+\begin{pmatrix}x_1\\ x_2\\x_3\end{pmatrix}=\begin{pmatrix}0\\0\\-6.5\end{pmatrix}
+$$
+as we can see are the reduced costs are $0$ for variables one and two, this means that these variables are not zero in the solution. The fact that $x_3$ is not zero means that $x_3$ will be zero in the solution, it also implies that an increase (given that we are maximizing) of the coefficient of $x_3$ by this value will make it be an active variable, thus having a non zero value.
+
+## Sensibility analysis - constraints
+
+### Analytic solution
+
+We will slightly alter the constraint and see how changes in the contraints change the problem:
+
+$$\max \,2x_1+3x_2-4x_3$$
+subject to
+$$3x_1+5x_2+2x_3=15+\Delta \pi_1$$
+$$x_1+3x_2-4x_3=8 +\Delta \pi_2$$
+$$x_1,x2,x3\geq0$$
+
+As we can see this problem has three variables and that makes using a graphical solution difficult at best. However this problem has only two restrictions so its dual problem only has two variables making it more suitable for a graphical analysis. The dual of this problem is:
+
+$$\min \,(5+\Delta \pi_1) y_1+(8 +\Delta \pi_2)y_2 $$
+subject to
+$$3y_1+y_2\geq2$$
+$$5y_1+3y_2\geq3 $$
+$$2 y_1-4y_2\geq-4 $$
+
+So changes in the contraints of the primal problem are related to changes in the objective function of the dual problem. If we keep both changes small enough that the optimal point is not changed we find out that the  objective function must follow the equation $y_2=-(5+\Delta \pi_1)/(8 +\Delta \pi_2)(y_1-5/4)+9/4$. Now we can focus the analysis on the slope of the equation:
+
+
+```{r gra2, echo=FALSE,message=FALSE}
+
+ggplot()+
+  #geom_polygon(fill="gray")+
+  
+  geom_ribbon(aes(ymin=y1,ymax=y2,x=x),fill="grey")+
+  geom_ribbon(aes(ymin=y1a,ymax=y2a,x=xa),fill="grey")+
+  
+  geom_function(fun=function(x){1+x/2},color="green",xlim=c(2/7,2))+
+  geom_function(fun=function(x){-(15+0)/(8-3)*(x-3/4)-1/4},color="red",xlim=c(2/7,2))+
+  geom_function(fun=function(x){-(15-10)/(8-5)*(x-3/4)-1/4},color="red",xlim=c(2/7,2))+
+  geom_function(fun=function(x){-(15-5)/(8-2.7)*(x-3/4)-1/4},color="red",xlim=c(2/7,2))+
+  geom_function(fun=function(x){-(15-3)/(8-2.7)*(x-3/4)-1/4},color="red",xlim=c(2/7,2))+
+  geom_function(fun=function(x){-(15-10)/(8-6.1)*(x-3/4)-1/4},color="red",xlim=c(2/7,2))+geom_function(fun=function(x){2-3*x}, color="yellow",xlim=c(2/7,3/4))+
+  geom_function(fun=function(x){1-5*x/3},color="blue",xlim=c(3/4,2))+
+  
+  
+  
+  geom_point(data=puntos,aes(x=Y1,y=Y2)  )
+# 
+  # geom_function(fun=function(x){9/8-15*x/8},color="black")
+
+  #geom_function(fun=function(x){8/8-15*x/8},color="black")+
+  
+  #geom_function(fun=function(x){10/8-15*x/8},color="black")
+
+
+```
+
+
+As we can see in the plot the problem will have the same solution as long as the objective function has a slope between that of the blue and yellow lines that are the boundaries of the feasible zone. 
+
+$$
+-3\leq -(5+\Delta \pi_1)/(8 +\Delta \pi_2)\leq-5/3
+$$
+
+We can multiply this inequality by $-1$ to remove all minus signs, we can also multiply by $8 +\Delta \pi_2$ considering that $\Delta \pi_2$ will be "small" that is we can easily see that a $\Delta \pi_2$ that makes the denominator negative will make the slope tend to a vertical line that is outside what we will consider. 
+
+$$
+3(8 +\Delta \pi_2)\geq (5+\Delta \pi_1) \geq 5/3 (8 +\Delta \pi_2)
+$$
+
+That solves to
+
+$$19+\Delta\pi_2\geq\Delta\pi_1$$
+$$\Delta\pi_1\geq40/3+5/3\Delta\pi_2$$
+$$\Delta\pi_2>-8$$
+
+We can see this zone in this plot.
+
+###
+
+```{r w, echo=FALSE,message=FALSE}
+
+x=0:100/100*(8+8.7)-8
+y2=x %>% (function(x){19+x})
+y3=x %>% (function(x){40/3+5*x/3})
+
+ggplot()+
+  #geom_polygon(fill="gray")+
+  
+  geom_ribbon(aes(ymin=y3,ymax=y2,x=x),fill="grey")+
+  #geom_ribbon(aes(ymin=y1a,ymax=y2a,x=xa),fill="grey")+
+  
+  geom_function(fun=function(x){19+x},color="green",xlim=c(-8.2,8.7))+
+  geom_function(fun=function(x){40/3+5*x/3},color="red",xlim=c(-8.2,8.7))+
+  geom_vline(xintercept = -8,color="blue")+
+  xlab(expression(Delta*pi*"2"))+ylab(expression(Delta*pi*"1"))
+  #geom_function(fun=function(x){-(15-10)/(8-5)*(x-3/4)-1/4},color="red",xlim=c(2/7,2))+
+  #geom_function(fun=function(x){-(15-5)/(8-2.7)*(x-3/4)-1/4},color="red",xlim=c(2/7,2))+
+  #geom_function(fun=function(x){-(15-3)/(8-2.7)*(x-3/4)-1/4},color="red",xlim=c(2/7,2))+
+  #geom_function(fun=function(x){-(15-10)/(8-6.1)*(x-3/4)-1/4},color="red",xlim=c(2/7,2))+geom_function(fun=function(x){2-3*x}, color="yellow",xlim=c(2/7,3/4))+
+  #geom_function(fun=function(x){1-5*x/3},color="blue",xlim=c(3/4,2))+
+  
+  
+  
+  #geom_point(data=puntos,aes(x=Y1,y=Y2)  )
+# 
+  # geom_function(fun=function(x){9/8-15*x/8},color="black")
+
+  #geom_function(fun=function(x){8/8-15*x/8},color="black")+
+  
+  #geom_function(fun=function(x){10/8-15*x/8},color="black")
+
+
+```
+
+### Sensibility analysis using Gurobi
+
+```{python w2, echo=TRUE,message=FALSE, class.source = "bg-danger",class.output = "bg-danger"}
+import gurobipy as gbp
+
+
+# %% Define el modelo vacio
+
+Modelo1=gbp.Model("ModeloTarea")
+
+
+# %% Define Variables
+x1=Modelo1.addVar(vtype=gbp.GRB.CONTINUOUS,name="x1")
+x2=Modelo1.addVar(vtype=gbp.GRB.CONTINUOUS,name="x2")
+x3=Modelo1.addVar(vtype=gbp.GRB.CONTINUOUS,name="x3")
+
+# %% Funcion objetivo
+Modelo1.setObjective(2*x1+3*x2-4*x3,gbp.GRB.MAXIMIZE)
+
+# %% Restricciones
+
+Modelo1.addConstr(3*x1+5*x2+2*x3==15)
+Modelo1.addConstr(x1+3*x2-4*x3==8)
+
+
+# %% Ver el modelo
+Modelo1.update()
+Modelo1.display()
+
+# %%
+Modelo1.optimize()
+
+
+
+```
+
+#### Sensivity analysis - objective function
+
+
+
+## Problem 2 
+
+
+### Formulation of the MAE problem
+
+The problem is a regression using the absolute value as the measure to be minimized, that is:
+
+$$
+\min_{\beta_0,\beta_1,\beta2 \in \mathbb{R}} \, \sum_{1=i}^n |H_i-\beta_0+\beta_1G+\beta_2S|
+$$
+
+Where $H$ is the height of an individual, $G$ is their glove (hand) size and $S$ is their shoe (feet) size. However we are faced with the fact that the problem is not linear due to the presence of the absolute values.
+
+There are several ways turning this problem into a linear one [ref], we will use the method known as a variable spliting where we will take each expression whose absolute value must be calculated and split it into positive and negative parts, doing this we have:
+
+$$a=a^+-a^-$$
+$$|a|=a^+-a^-$$
+$$a^+.a^-\geq0$$
+
+Our problem becomes:
+
+$$\min \sum_{i=1}^n e_i^++e_i^-$$
+subject to
+$$ e_i^+-e_i^-+\beta_0+\beta_1G_i+\beta_2S_i=H_i\\$$
+$$e_i^+,e_i^-\geq0$$
+$$i\in \{1,2,\ldots,n\}$$
+
+
+The formulation of this problem using gurobi python using a modified form of the template seen in class is as follows:
+
+```{python MAE1, echo=TRUE,message=FALSE, class.source = "bg-danger",class.output = "bg-danger"}
+from gurobipy import *
+
+n = 7 # number of observations
+
+oneton = range(1, n+1)  # list [1, ..., n]
+
+zerotoone = range(3) # list [0, 1]
+
+G_data = [17.9,18.2,18.5,16.9,17.3,17.9,18.1] 
+S_data = [30.1,29.5,30.4,31.6,27.4,28.9,33.4] 
+
+
+H_data = [176.2,176.8,184.2,173.2,172.8,174.1,180.5]
+
+G = {j : G_data[j-1] for j in oneton}
+
+S = {j : S_data[j-1] for j in oneton}
+H = {j : H_data[j-1] for j in oneton}
+
+model = Model('mae')
+
+ePlus = model.addVars(oneton, name="ePlus")
+
+eMinus = model.addVars(oneton, name="eMinus")
+
+b = model.addVars(zerotoone, name="b", lb=-GRB.INFINITY)
+
+model.addConstrs((ePlus[i] - eMinus[i] + b[0] + G[i] * b[1]+S[i]*b[2] == H[i] for i in oneton), name = "pi")
+
+# Objective
+obj = quicksum(((ePlus[i] + eMinus[i]) for i in oneton))
+
+model.setObjective(obj, GRB.MINIMIZE)
+    
+model.setParam(GRB.Param.PoolSolutions, 3)
+model.Params.PoolSearchMode=2        
+model.update()
+model.display()
+model.optimize()
+
+# Display solution (print the name of each variable and the solution value)
+print('--------------------------------')
+print('\nOptimal solution:\n')
+
+print('Variable Information Including Sensitivity Information:')
+
+# tVars = PrettyTable(['Variable Name', ' Value', 'ReducedCost', 
+#                     ' SensLow', ' SensUp'])  #column headers
+
+for v in model.getVars():
+    print("%s %s %8.2f %s %8.2f %s %8.2f %s %8.2f" % 
+              (v.Varname, "=", v.X, ", reduced cost = ", abs(v.RC), ", from coeff = ", v.SAObjLow, "to coeff = ", v.SAObjUp))
+    print(" ")
+        
+        
+print('\nOptimal objective value: %g' % model.objVal)
+
+print('\nOptimal shadow prices:\n')
+for c in model.getConstrs():
+        print("%s %s %8.2f %s %8.2f %s %8.2f" % (c.ConstrName, ": shadow price = ", c.Pi, ", from RHS = ", c.SARHSLow, "to RHS = ", c.SARHSUp))
+        print(" ")
+
+print('Model Status: '+str(model.status))
+print('Number of basic solutions: '+str(model.SolCount))
+
+```
+
+
+
+ref: http://yetanothermathprogrammingconsultant.blogspot.com/2017/11/lp-and-lad-regression.html
+
+### Solution
+
+From the output above we can infer that the equation for the regression is:
+
+$$
+H=63.97+4.54G+1.03S
+$$
+
+Note that we expect at least one pair of each $e_i^+$, $e_i^-$ to be cero as it is inneficient to have both positives at the same time, also as we have 3 more degrees of freedom (from the three coefficients of the regression) we can guess that 3 $e_i$ will be zero (meaning that the regression will exactly pass though 3 points), this is indeed the case for points 1,4 and 7.
+
+We can also ask gurobi to find multiple solutions in case one or more of the restricctions is compatible with the gradient of the objective function. To do this gurobi was asked to Pool up to 3 solutions, in the end the number of optimal solutions kept is one.
+
+
+### Dual solution
+
+The dual of the problem is 
+
+$$
+\max \sum_{i=1}^ny_i\pi_i
+$$
+$$
+\sum_{i=1}^n \pi_i=0
+$$
+$$
+\sum_{i=1}^n x_{ij}\pi_i=0\,j\in\{1,\ldots,m\}
+$$
+$$
+-1\leq\pi_i\leq 1 \,\, i\in\{1,\ldots,n\} 
+$$
+
+
+Solving this in Gurobi 
+
+```{python MAE2, echo=TRUE,message=FALSE, class.source = "bg-danger",class.output = "bg-danger"}
+from gurobipy import *
+
+n = 7 # number of observations
+
+oneton = range(1, n+1)  # list [1, ..., n]
+
+zerotoone = range(3) # list [0, 1]
+
+G_data = [17.9,18.2,18.5,16.9,17.3,17.9,18.1] 
+S_data = [30.1,29.5,30.4,31.6,27.4,28.9,33.4] 
+
+
+H_data = [176.2,176.8,184.2,173.2,172.8,174.1,180.5]
+
+G = {j : G_data[j-1] for j in oneton}
+
+S = {j : S_data[j-1] for j in oneton}
+H = {j : H_data[j-1] for j in oneton}
+
+model = Model('mae-dual')
+
+pi = model.addVars(oneton, name="pi",lb=-1,ub=1)
+
+
+model.addConstr(quicksum(pi[i] for i in oneton)==0, name = "b0")
+
+model.addConstr(quicksum(pi[i]*G[i] for i in oneton)==0, name = "b1")
+model.addConstr(quicksum(pi[i]*S[i] for i in oneton)==0, name = "b2")
+
+# Objective
+obj = quicksum((pi[i]*H[i] for i in oneton))
+
+model.setObjective(obj, GRB.MAXIMIZE)
+    
+model.setParam(GRB.Param.PoolSolutions, 3)
+model.Params.PoolSearchMode=2        
+model.update()
+model.display()
+model.optimize()
+
+# Display solution (print the name of each variable and the solution value)
+print('--------------------------------')
+print('\nOptimal solution:\n')
+
+print('Variable Information Including Sensitivity Information:')
+
+# tVars = PrettyTable(['Variable Name', ' Value', 'ReducedCost', 
+#                     ' SensLow', ' SensUp'])  #column headers
+
+for v in model.getVars():
+    print("%s %s %8.2f %s %8.2f %s %8.2f %s %8.2f" % 
+              (v.Varname, "=", v.X, ", reduced cost = ", abs(v.RC), ", from coeff = ", v.SAObjLow, "to coeff = ", v.SAObjUp))
+    print(" ")
+        
+        
+print('\nOptimal objective value: %g' % model.objVal)
+
+print('\nOptimal shadow prices:\n')
+for c in model.getConstrs():
+        print("%s %s %8.2f %s %8.2f %s %8.2f" % (c.ConstrName, ": shadow price = ", c.Pi, ", from RHS = ", c.SARHSLow, "to RHS = ", c.SARHSUp))
+        print(" ")
+
+print('Model Status: '+str(model.status))
+print('Number of basic solutions: '+str(model.SolCount))
+
+```
+
+
+The formulation of the dual has us find a vector that is perpendicular to each of the variables (including an row of ones to include the constant term) while maximizing its projection to the target variable. Te solution of the original problem can be recovered using complementary slackness or the shadow price of each of the constant as seen in the data.
